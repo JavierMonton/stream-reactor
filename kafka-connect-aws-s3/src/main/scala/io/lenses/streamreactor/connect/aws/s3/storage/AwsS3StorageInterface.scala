@@ -35,7 +35,7 @@ import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
 
-class AwsS3StorageInterface(implicit connectorTaskId: ConnectorTaskId, s3Client: S3Client)
+class AwsS3StorageInterface(val connectorTaskId: ConnectorTaskId, val s3Client: S3Client)
     extends AwsS3DirectoryLister
     with StorageInterface
     with LazyLogging {
@@ -131,7 +131,7 @@ class AwsS3StorageInterface(implicit connectorTaskId: ConnectorTaskId, s3Client:
     }
   }
 
-  private def getBlobInner(bucketAndPath: RemoteS3PathLocation) = {
+  private def getBlobInner(bucketAndPath: RemoteS3PathLocation): ResponseInputStream[GetObjectResponse] = {
     val request = GetObjectRequest
       .builder()
       .bucket(bucketAndPath.bucket)
@@ -143,7 +143,7 @@ class AwsS3StorageInterface(implicit connectorTaskId: ConnectorTaskId, s3Client:
       )
   }
 
-  private def headBlobInner(bucketAndPath: RemoteS3PathLocation) =
+  private def headBlobInner(bucketAndPath: RemoteS3PathLocation): HeadObjectResponse =
     s3Client
       .headObject(
         HeadObjectRequest

@@ -20,8 +20,8 @@ import io.lenses.streamreactor.connect.aws.s3.model.location.RemoteS3PathLocatio
 
 import java.io.InputStream
 
-class CsvFormatStreamReader(inputStreamFn: () => InputStream, bucketAndPath: RemoteS3PathLocation, hasHeaders: Boolean)
-    extends TextFormatStreamReader(inputStreamFn, bucketAndPath) {
+class CsvFormatStreamReader(inputStream: InputStream, bucketAndPath: RemoteS3PathLocation, hasHeaders: Boolean)
+    extends TextFormatStreamReader(inputStream, bucketAndPath) {
 
   private var firstRun: Boolean = true
 

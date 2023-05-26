@@ -20,10 +20,10 @@ import io.lenses.streamreactor.connect.aws.s3.formats.reader.TextFormatStreamRea
 import io.lenses.streamreactor.connect.aws.s3.formats.writer.JsonFormatWriter
 import io.lenses.streamreactor.connect.aws.s3.formats.writer.StructSinkData
 import io.lenses.streamreactor.connect.aws.s3.model.location.RemoteS3PathLocation
+import io.lenses.streamreactor.connect.aws.s3.stream.S3ByteArrayOutputStream
 import io.lenses.streamreactor.connect.aws.s3.utils.TestSampleSchemaAndData
 import io.lenses.streamreactor.connect.aws.s3.utils.TestSampleSchemaAndData.firstUsers
 import io.lenses.streamreactor.connect.aws.s3.utils.TestSampleSchemaAndData.topic
-import io.lenses.streamreactor.connect.aws.s3.stream.S3ByteArrayOutputStream
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -35,7 +35,7 @@ class TextFormatStreamReaderTest extends AnyFlatSpec with Matchers {
 
     val byteArrayInputStream: ByteArrayInputStream = writeRecordsToOutputStream
     val avroFormatStreamReader =
-      new TextFormatStreamReader(() => byteArrayInputStream, RemoteS3PathLocation("test-bucket", "test-path"))
+      new TextFormatStreamReader(byteArrayInputStream, RemoteS3PathLocation("test-bucket", "test-path"))
 
     avroFormatStreamReader.hasNext should be(true)
     avroFormatStreamReader.next() should be(StringSourceData(TestSampleSchemaAndData.recordsAsJson(0), 0))
@@ -49,7 +49,7 @@ class TextFormatStreamReaderTest extends AnyFlatSpec with Matchers {
 
   private def writeRecordsToOutputStream = {
     val outputStream     = new S3ByteArrayOutputStream()
-    val jsonFormatWriter = new JsonFormatWriter(() => outputStream)
+    val jsonFormatWriter = new JsonFormatWriter(outputStream)
     firstUsers.foreach(data => jsonFormatWriter.write(None, StructSinkData(data), topic))
     jsonFormatWriter.complete()
 

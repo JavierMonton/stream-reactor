@@ -26,7 +26,6 @@ import io.lenses.streamreactor.connect.aws.s3.source.files.S3SourceFileQueue
 import io.lenses.streamreactor.connect.aws.s3.source.files.SourceFileQueue
 import io.lenses.streamreactor.connect.aws.s3.storage.FileListError
 import io.lenses.streamreactor.connect.aws.s3.storage.StorageInterface
-import io.lenses.streamreactor.connect.aws.s3.utils.ThrowableEither.toJavaThrowableConverter
 
 /**
   * Given a sourceBucketOptions, manages readers for all of the files
@@ -51,11 +50,9 @@ class ReaderManager(
     def toExceptionState(err: Throwable): ExceptionReaderState =
       ExceptionReaderState(err)
 
-    def toExceptionState(err: String): ExceptionReaderState =
-      ExceptionReaderState(new IllegalStateException(err))
   }
 
-  sealed trait MoreFilesAvailableState extends ReaderState {
+  private sealed trait MoreFilesAvailableState extends ReaderState {
 
     def readNextFile: ReaderState =
       fileSource.next() match {
@@ -69,22 +66,22 @@ class ReaderManager(
           }
         case Right(None) =>
           logger.debug(s"[${connectorTaskId.show}] readNextFile - No next file found")
-          toNoFurtherFilesState()
+          toNoFurtherFilesState
       }
 
-    def toInitialisedState(reader: ResultReader): ReaderState =
+    private def toInitialisedState(reader: ResultReader): ReaderState =
       InitialisedReaderState(reader)
 
-    def toNoFurtherFilesState(): ReaderState = NoMoreFilesReaderState()
+    private def toNoFurtherFilesState: ReaderState = NoMoreFilesReaderState()
 
   }
 
-  case class EmptyReaderState() extends MoreFilesAvailableState {
+  private case class EmptyReaderState() extends MoreFilesAvailableState {
     logger.trace(s"[${connectorTaskId.show}] state: EMPTY")
     override def hasReader: Boolean = false
   }
 
-  case class InitialisedReaderState(currentReader: ResultReader) extends ReaderState {
+  private case class InitialisedReaderState(currentReader: ResultReader) extends ReaderState {
     def retrieveResults(limit: Int): Option[PollResults] = currentReader.retrieveResults(limit)
 
     logger.trace(s"[${connectorTaskId.show}] state: INITIALISED")
@@ -92,19 +89,22 @@ class ReaderManager(
 
     override def hasReader: Boolean = true
 
-    def toCompleteState(): ReaderState = {
-      fileSource.markFileComplete(currentReader.getLocation).toThrowable
+    def toCompleteState: ReaderState = {
+      fileSource.markFileComplete(currentReader.getLocation) match {
+        case Left(value) => logger.error(s"[${connectorTaskId.show}] Unable to mark file as complete: $value")
+        case Right(_)    =>
+      }
       currentReader.close()
       CompleteReaderState()
     }
   }
 
-  case class CompleteReaderState() extends MoreFilesAvailableState {
+  private case class CompleteReaderState() extends MoreFilesAvailableState {
     logger.trace(s"[${connectorTaskId.show}] state: COMPLETE")
     override def hasReader: Boolean = false
   }
 
-  case class NoMoreFilesReaderState() extends MoreFilesAvailableState {
+  private case class NoMoreFilesReaderState() extends MoreFilesAvailableState {
     logger.trace(s"[${connectorTaskId.show}] state: NO MORE FILES")
     override def hasReader: Boolean = false
   }
@@ -137,12 +137,12 @@ class ReaderManager(
       state match {
         case initState @ InitialisedReaderState(_) =>
           initState.retrieveResults(allLimit) match {
-            case None => state = initState.toCompleteState()
+            case None => state = initState.toCompleteState
             case Some(pollResults) =>
               allLimit -= pollResults.resultList.size
               allResults = allResults :+ pollResults
               if (pollResults.resultList.size < allLimit) {
-                state = initState.toCompleteState()
+                state = initState.toCompleteState
               }
           }
         case _ =>
