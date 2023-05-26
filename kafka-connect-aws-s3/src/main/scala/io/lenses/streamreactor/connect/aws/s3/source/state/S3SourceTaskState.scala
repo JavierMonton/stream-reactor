@@ -19,7 +19,6 @@ import io.lenses.streamreactor.connect.aws.s3.auth.AwsS3ClientCreator
 import io.lenses.streamreactor.connect.aws.s3.config.ConnectorTaskId
 import io.lenses.streamreactor.connect.aws.s3.model.location.RemoteS3PathLocationWithLine
 import io.lenses.streamreactor.connect.aws.s3.model.location.RemoteS3RootLocation
-import io.lenses.streamreactor.connect.aws.s3.source.WrappedSourceException
 import io.lenses.streamreactor.connect.aws.s3.source.config.S3SourceConfig
 import io.lenses.streamreactor.connect.aws.s3.source.distribution.PartitionSearcher
 import io.lenses.streamreactor.connect.aws.s3.source.reader.ReaderManager
@@ -50,7 +49,7 @@ object S3SourceTaskState {
   def make(
     props:           util.Map[String, String],
     contextOffsetFn: RemoteS3RootLocation => Option[RemoteS3PathLocationWithLine],
-  ): Either[Throwable, S3SourceTaskState] = {
+  ): Either[Throwable, S3SourceTaskState] =
     for {
       connectorTaskId <- ConnectorTaskId.fromProps(props)
       config          <- S3SourceConfig.fromProps(props)
@@ -65,7 +64,7 @@ object S3SourceTaskState {
       )
 
     } yield {
-      val readerManagerCreateFn: (RemoteS3RootLocation, String) => ReaderManager = (root, rootPath) => {
+      val readerManagerCreateFn: (RemoteS3RootLocation, String) => ReaderManager = (root, _) => {
         val sbo = config.bucketOptions.find(sb => sb.sourceBucketAndPrefix == root).getOrElse(
           throw new ConnectException("no root found"),
         )
@@ -74,9 +73,5 @@ object S3SourceTaskState {
       val readerManagerService =
         new ReaderManagerService(config.partitionSearcher, partitionSearcher, readerManagerCreateFn)
       new S3SourceTaskState(() => readerManagerService.getReaderManagers)
-    }
-  }
-    .leftMap {
-      case s: String => new WrappedSourceException(s)
     }
 }
